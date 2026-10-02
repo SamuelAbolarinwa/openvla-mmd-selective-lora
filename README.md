@@ -1,86 +1,61 @@
 # OpenVLA MMD-Selective LoRA
 
-Scripts for comparing uniform and MMD-selected LoRA fine-tuning of OpenVLA on LIBERO-Object with an equal trainable-parameter budget.
-
-## Experiment
-
-Both models start independently from the same pinned pretrained OpenVLA checkpoint.
-
-| Setting | Uniform LoRA | MMD-selective LoRA |
-| --- | --- | --- |
-| Decoder layers | All 32 | Layers 9–23 and 25 |
-| Decoder rank / alpha | 32 / 16 | 64 / 32 |
-| Non-decoder adapters | Rank 32 / alpha 16 | Same modules and settings |
-| Trainable parameters | 110,828,288 | 110,828,288 |
-| Optimiser updates | 50,000 | 50,000 |
-
-Shared training settings include BF16, FP32 adapters, batch size 16, gradient accumulation 8, effective batch size 128, learning rate `5e-4`, image augmentation and gradient checkpointing.
-
-The MMD layer selection is fixed. These scripts train and evaluate the selected layout; they do not recompute MMD selection.
+Scripts for comparing uniform and MMD-selected LoRA fine-tuning of OpenVLA on LIBERO-Object with the same trainable-parameter budget.
 
 ## Requirements
 
 - x86_64 Linux.
-- NVIDIA GPU with BF16 support and sufficient memory for the training configuration.
-- Working NVIDIA driver and `nvidia-smi`.
+- A working NVIDIA driver and a GPU that supports BF16, with enough memory for training.
 - Bash, Git, curl, tar, sha256sum, timeout and flock.
-- Internet access for package, source, model and dataset downloads.
-- Working EGL or OSMesa libraries for headless rendering.
+- Internet access to download dependencies, models and data.
+- EGL or OSMesa libraries for headless simulation.
+- At least 200 GiB of free space at the repository, run, cache and data locations.
 
-Preflight requires a conservative reserve of **200 GiB free** at the repository, run, cache and data locations.
+Setup creates separate Python environments for training and evaluation. It uses Python 3.10 or 3.11 if available, or downloads a local Python installation.
 
-Setup uses Python 3.10 or 3.11 when available. Otherwise, it downloads a verified uv binary and installs Python 3.11.13 locally. Training and evaluation use separate virtual environments.
+Download or clone the repository, then open a terminal in its folder.
 
-## Run the complete experiment
+## Optional: run a smoke test first
 
-Open a terminal in the repository folder:
-
-```bash
-bash run_all.sh
-```
-
-The pipeline:
-
-1. Records hardware and environment diagnostics.
-2. Installs dependencies and prepares pinned assets.
-3. Checks headless rendering across all ten tasks.
-4. Runs short training, adapter-save and fresh-process reload tests.
-5. Tests each smoke adapter alongside the simulator.
-6. Trains both conditions.
-7. Merges the final adapters.
-8. Runs dry and full evaluations.
-9. Saves the comparison reports.
-
-The long training runs start only after the preceding checks pass.
-
-## Run only the smoke tests
+To check setup, short training runs, adapter saving and reloading, and simulator execution:
 
 ```bash
 bash run_smoke.sh
 ```
 
-To start the complete experiment using that run directory:
+This stops after the checks and prints the run directory.
+
+To continue with the full experiment using that directory:
 
 ```bash
 VLA_RUN_DIR=/absolute/path/to/run bash run_all.sh
 ```
 
-## GPU allocation
+You can skip this separate smoke run and use the command below. The full pipeline includes the same checks before starting long training.
 
-The scripts respect an existing `CUDA_VISIBLE_DEVICES` allocation.
+## Run the full experiment
 
-- One visible GPU: conditions run sequentially.
-- Two or more: conditions run independently on the first two visible GPUs.
+```bash
+bash run_all.sh
+```
 
-To force sequential execution:
+The script installs dependencies, downloads the required assets, runs the checks, trains both models and evaluates them. Logs and results are saved in the run directory printed in the terminal.
+
+Each model trains for 50,000 optimiser updates. Full evaluation runs 150 episodes per model across ten LIBERO-Object tasks.
+
+## GPU selection
+
+The scripts use the GPUs available through `CUDA_VISIBLE_DEVICES`. Keep any allocation supplied by your environment.
+
+With one GPU, the two models run sequentially. With two or more, they run independently on the first two visible GPUs.
+
+To run sequentially even when multiple GPUs are visible:
 
 ```bash
 VLA_SEQUENTIAL=1 bash run_all.sh
 ```
 
-The scripts do not allocate GPUs or distribute one model across multiple GPUs. Use only devices assigned to your run.
-
-## Choose storage locations
+## Choose where files are stored
 
 ```bash
 VLA_RUN_DIR=/storage/openvla/run_01 \
@@ -89,11 +64,11 @@ VLA_DATA_ROOT=/storage/openvla/data/modified_libero_rlds \
 bash run_all.sh
 ```
 
-Use a separate run directory for each experiment.
+Use a different run directory for each experiment.
 
 ## Resume interrupted training
 
-Checkpoints are saved every 5,000 optimiser updates.
+Checkpoints are saved every 5,000 updates. To resume from the latest saved checkpoint:
 
 ```bash
 VLA_RUN_DIR=/absolute/path/to/existing/run \
@@ -101,52 +76,48 @@ RESUME=1 \
 bash run_all.sh
 ```
 
-Keep the original configuration and scripts unchanged. Resume restores the adapter, optimiser and saved RNG states, but recreates the RLDS data stream rather than restoring its exact shuffle position.
+Keep the scripts and configuration unchanged. Resume restores the model, optimiser and saved random states, but restarts the dataset shuffle stream.
 
-If interruption occurs before the first checkpoint, start a new run directory.
+If no checkpoint was saved, start a new run directory.
 
-## Evaluate without retraining
+## Run evaluation separately
+
+After training and merging have completed:
 
 ```bash
-bash run_evaluation.sh /absolute/path/to/existing/run
+bash run_evaluation.sh /absolute/path/to/run
 ```
 
-Full evaluation runs 15 episodes per task across ten LIBERO-Object tasks, giving 150 episodes per model.
+## Results
 
-## Outputs
+The run directory contains:
 
-Each run contains:
+- `logs/`: setup, hardware and execution logs.
+- `training/`: checkpoints, final adapters and training metrics.
+- `merged/`: the merged models.
+- `evaluation/`: episode records and evaluation results.
+- `FINAL_EXPERIMENT_SUMMARY.json`: the overall comparison.
+- `FINAL_PER_TASK_RESULTS.csv`: results for each task.
 
-| Path | Contents |
-| --- | --- |
-| `logs/` | Hardware diagnostics, dependency versions and stage logs |
-| `smoke/` | Smoke-test outputs |
-| `training/` | Metrics, checkpoints, final adapters and status records |
-| `merged/` | Final merged models |
-| `evaluation/` | Episode progress and evaluation results |
-| `FINAL_EXPERIMENT_SUMMARY.json` | Overall comparison and training provenance |
-| `FINAL_PER_TASK_RESULTS.csv` | Per-task success-rate comparison |
+## If a run fails
 
-## Troubleshooting
-
-Create a diagnostic bundle:
+Collect the logs and error records:
 
 ```bash
 bash collect_logs.sh /absolute/path/to/run
 ```
 
-This produces `diagnostics.tar.gz` containing logs and relevant JSON records, without model weights or optimiser tensors.
+This creates `diagnostics.tar.gz` without including model weights.
 
-## Validation
+## Experiment settings
 
-Run the offline package checks:
+| Setting | Uniform LoRA | MMD-selective LoRA |
+| --- | --- | --- |
+| Decoder layers | All 32 | Layers 9–23 and 25 |
+| Decoder rank / alpha | 32 / 16 | 64 / 32 |
+| Non-decoder adapters | Rank 32 / alpha 16 | Same modules and settings |
+| Trainable parameters | 110,828,288 | 110,828,288 |
 
-```bash
-bash validate_package.sh
-```
+Both models start independently from the same pretrained checkpoint. They use BF16, FP32 adapters, batch size 16, gradient accumulation 8, learning rate `5e-4`, image augmentation and gradient checkpointing.
 
-These check syntax, configuration, orchestration and checkpoint handling. They do not execute real model training.
-
-See `VALIDATION.json` for preparation checks and remaining runtime validation requirements. GPU memory fit and model execution are checked by the smoke tests on the target machine.
-
-Generated environments, datasets, caches, checkpoints and model weights are excluded from Git through `.gitignore`.
+The MMD layer selection is already fixed. The scripts do not recompute it.
