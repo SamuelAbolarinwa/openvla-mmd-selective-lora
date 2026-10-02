@@ -1,0 +1,113 @@
+{
+  "prepared_at_utc": "2026-10-02T14:52:02.000549+00:00",
+  "status": "LOCAL_CHECKS_PASS_UNIVERSITY_GPU_VALIDATION_PENDING",
+  "checks": {
+    "bash_syntax": "PASS",
+    "python_compilation": "PASS",
+    "offline_contract_tests": {
+      "status": "PASS",
+      "count": 9
+    },
+    "python_311_dependency_installation": "PASS",
+    "pip_check_with_patched_robosuite": "PASS",
+    "pinned_openvla_dlimp_tfds_imports": "PASS",
+    "actual_architecture_meta_adapter_audit": {
+      "status": "PASS",
+      "uniform_trainable_params": 110828288,
+      "mmd_trainable_params": 110828288,
+      "non_decoder_modules_each": 215,
+      "weights_loaded": false,
+      "training_executed": false
+    },
+    "libero_renderer_preflight": {
+      "status": "PASS",
+      "backend": "egl",
+      "tasks": 10,
+      "required_initial_states_per_task": 15,
+      "torch": "2.5.1+cpu",
+      "note": "Simulator-only validation; no model inference or CUDA execution"
+    },
+    "osmesa_probe": "Unavailable in validation environment; EGL fallback passed"
+  },
+  "not_validated": [
+    "CUDA PyTorch wheel execution",
+    "Actual BF16 batch-16 training memory fit",
+    "Real dataset training/save/reload in this package",
+    "Model and simulator CUDA coexistence",
+    "Long-run training or final policy performance",
+    "Institutional allocation/network/native-library configuration"
+  ],
+  "production_gate_order": [
+    "hardware_and_storage",
+    "isolated_environments_and_real_cuda_tensor_execution",
+    "pinned_assets",
+    "all_task_renderer_preflight",
+    "both_training_save_and_fresh_reload_smokes",
+    "both_adapter_and_simulator_combined_smokes",
+    "long_training",
+    "final_merges",
+    "dry_and_full_evaluation"
+  ],
+  "scientific_configuration": {
+    "experiment_name": "openvla_equal_budget_mmd_vs_uniform",
+    "model_id": "openvla/openvla-7b",
+    "model_revision": "cf0c8cbad1e427993a2e02da9c5182a91c33f869",
+    "openvla_repo": "https://github.com/openvla/openvla.git",
+    "openvla_commit": "c8f03f48af692657d3060c19588038c7220e9af9",
+    "libero_repo": "https://github.com/Lifelong-Robot-Learning/LIBERO.git",
+    "libero_commit": "8f1084e3132a39270c3a13ebe37270a43ece2a01",
+    "dataset_repo": "openvla/modified_libero_rlds",
+    "dataset_name": "libero_object_no_noops",
+    "mmd_selected_layers": [
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      25
+    ],
+    "expected_trainable_params": 110828288,
+    "seed": 7,
+    "training": {
+      "max_steps": 50000,
+      "batch_size": 16,
+      "grad_accumulation_steps": 8,
+      "effective_batch": 128,
+      "learning_rate": 0.0005,
+      "max_grad_norm": 1.0,
+      "image_aug": true,
+      "shuffle_buffer_size": 100000,
+      "save_steps": 5000,
+      "smoke_steps": 2,
+      "smoke_shuffle_buffer_size": 100000,
+      "gradient_checkpointing": true
+    },
+    "evaluation": {
+      "task_suite": "libero_object",
+      "dry_trials_per_task": 1,
+      "full_trials_per_task": 15,
+      "env_seed": 0,
+      "center_crop": true,
+      "max_steps": 280,
+      "settle_steps": 10
+    },
+    "dataset_revision": "6ce6aaaaabdbe590b1eef5cd29c0d33f14a08551",
+    "dlimp_commit": "040105d256bd28866cc6620621a3d5f7b6b91b46"
+  },
+  "runtime_validation_environment": {
+    "python": "3.11.13",
+    "torch": "2.5.1+cpu",
+    "tensorflow_cpu": "2.15.1",
+    "robosuite": "1.4.1 with headless OpenCV metadata"
+  }
+}

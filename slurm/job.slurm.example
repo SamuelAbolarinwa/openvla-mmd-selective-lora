@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#
+# IMPORTANT:
+# This is only a template because the institution's Slurm partition/account/GRES syntax
+# has not been confirmed. The colleague administering the cluster should adapt the
+# commented resource lines to the local policy.
+#
+#SBATCH --job-name=openvla-mmd
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=32
+#SBATCH --output=slurm-%j.out
+#SBATCH --error=slurm-%j.err
+#
+# Examples ONLY; uncomment/adapt for the local cluster:
+# #SBATCH --partition=<gpu-partition>
+# #SBATCH --account=<project-account>
+# #SBATCH --gres=gpu:h100:2
+# #SBATCH --time=7-00:00:00
+
+set -Eeuo pipefail
+cd /path/to/openvla_university_experiment
+
+# If the cluster uses modules, load the site-provided Python/CUDA module(s) here.
+# Example only:
+# module load python/3.11
+# module load cuda/12.4
+
+bash run_all.sh

@@ -1,0 +1,16 @@
+Python/Bash syntax: PASS
+test_checkpoint_commit_survives_failed_next_save (__main__.Contracts.test_checkpoint_commit_survives_failed_next_save) ... ok
+test_force_sequential (__main__.Contracts.test_force_sequential) ... ok
+test_log_bundle_excludes_weights (__main__.Contracts.test_log_bundle_excludes_weights) ... ok
+test_missing_gpu_keeps_preflight_log (__main__.Contracts.test_missing_gpu_keeps_preflight_log) ... ok
+test_numeric_gpu_allocation (__main__.Contracts.test_numeric_gpu_allocation) ... ok
+test_scientific_configuration (__main__.Contracts.test_scientific_configuration) ... ok
+test_single_gpu_sequential (__main__.Contracts.test_single_gpu_sequential) ... ok
+test_stop_other_condition_on_failure (__main__.Contracts.test_stop_other_condition_on_failure) ... ok
+test_uuid_gpu_allocation (__main__.Contracts.test_uuid_gpu_allocation) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.903s
+
+OK
+OFFLINE PACKAGE VALIDATION: PASS (no real model, CUDA or simulator execution)
