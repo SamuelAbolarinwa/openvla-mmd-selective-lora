@@ -218,6 +218,25 @@ def combined_smoke(checkpoint, device_index, env_seed, adapter=None, stats_path=
         torch.cuda.empty_cache()
 
 
+def evaluation_identity(checkpoint, trials, seed, env_seed, max_steps, settle_steps):
+    return {
+        'checkpoint':str(checkpoint.resolve()), 'trials':trials, 'seed':seed,
+        'env_seed':env_seed, 'max_steps':max_steps, 'settle_steps':settle_steps,
+        'config_sha256':hashlib.sha256((checkpoint/'config.json').read_bytes()).hexdigest(),
+        'evaluation_source_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        'merge_identity':json.loads((checkpoint/'MERGE_COMPLETE.json').read_text()),
+    }
+
+
+def load_progress(progress_path, identity):
+    if progress_path.exists():
+        progress = json.loads(progress_path.read_text())
+        if progress.get('identity') != identity:
+            raise RuntimeError('Existing evaluation progress belongs to different code/model/settings; use the original package or a fresh output directory')
+        return progress
+    return {'identity': identity, 'episodes': {}}
+
+
 def evaluate(checkpoint, out_dir, trials, seed, env_seed, device_index, max_steps, settle_steps):
     set_seed(seed)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -225,17 +244,8 @@ def evaluate(checkpoint, out_dir, trials, seed, env_seed, device_index, max_step
     results_path = out_dir / "results.json"
     failure_path = out_dir / "failure.json"
 
-    identity = {
-        'checkpoint':str(checkpoint.resolve()), 'trials':trials, 'seed':seed,
-        'env_seed':env_seed, 'max_steps':max_steps, 'settle_steps':settle_steps,
-        'config_sha256':hashlib.sha256((checkpoint/'config.json').read_bytes()).hexdigest(),
-        'merge_identity':json.loads((checkpoint/'MERGE_COMPLETE.json').read_text()),
-    }
-    if progress_path.exists():
-        progress=json.loads(progress_path.read_text())
-        if progress.get('identity') != identity:
-            raise RuntimeError('Existing evaluation progress belongs to different model/settings; use a fresh output directory')
-    else: progress={'identity':identity, 'episodes':{}}
+    identity = evaluation_identity(checkpoint, trials, seed, env_seed, max_steps, settle_steps)
+    progress = load_progress(progress_path, identity)
     if trials <= 0 or max_steps <= 0 or settle_steps < 0: raise ValueError('Invalid evaluation counts')
 
     try:

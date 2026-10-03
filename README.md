@@ -11,7 +11,7 @@ Scripts for comparing uniform and MMD-selected LoRA fine-tuning of OpenVLA on LI
 - EGL or OSMesa libraries for headless simulation.
 - At least 200 GiB of free space at the repository, run, cache and data locations.
 
-Setup creates separate Python environments for training and evaluation. It uses Python 3.10 or 3.11 if available, or downloads a local Python installation.
+Setup creates separate Python environments for training and evaluation. It uses Python 3.10 or 3.11 if it can create a working virtual environment with pip. Otherwise, it downloads a local Python installation. If you set `PYTHON_BIN`, that interpreter must meet these requirements; unset it to allow automatic selection.
 
 Download or clone the repository, then open a terminal in its folder.
 
@@ -82,7 +82,7 @@ If no checkpoint was saved, start a new run directory.
 
 ## Run evaluation separately
 
-After training and merging have completed:
+After training and merging have completed, use the same scripts and configuration as the training run. Evaluation checks the saved source manifest before setup and rejects episode records produced by different evaluator code:
 
 ```bash
 bash run_evaluation.sh /absolute/path/to/run

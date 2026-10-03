@@ -17,19 +17,35 @@ driver_log() {
   trap 'printf "Failed command at line %s, stage %s, exit %s\n" "$LINENO" "$STAGE" "$?" >&2' ERR
 }
 
+python_supports_venv() {
+  local candidate=$1 probe rc=0
+  "$candidate" -c 'import sys, venv, ensurepip; assert (3,10) <= sys.version_info[:2] <= (3,11)' >/dev/null 2>&1 || return 1
+  probe=$(mktemp -d) || return 1
+  "$candidate" -m venv "$probe/venv" >/dev/null 2>&1 || rc=$?
+  if ((rc == 0)); then
+    "$probe/venv/bin/python" -m pip --version >/dev/null 2>&1 || rc=$?
+  fi
+  rm -rf -- "$probe"
+  return "$rc"
+}
+
 choose_python() {
   if [[ -n "${PYTHON_BIN:-}" ]]; then
-    "$PYTHON_BIN" -c 'import sys; assert (3,10) <= sys.version_info[:2] <= (3,11), "Use Python 3.10 or 3.11"'
+    python_supports_venv "$PYTHON_BIN" || {
+      echo 'PYTHON_BIN must be Python 3.10 or 3.11 with working venv and pip. Unset it to allow automatic selection.' >&2
+      return 30
+    }
     VLA_PYTHON="$PYTHON_BIN"
     return
   fi
   local candidate
   for candidate in python3.11 python3.10 python3; do
-    if command -v "$candidate" >/dev/null && "$candidate" -c 'import sys; assert (3,10) <= sys.version_info[:2] <= (3,11)' >/dev/null 2>&1; then
+    if command -v "$candidate" >/dev/null && python_supports_venv "$candidate"; then
       VLA_PYTHON=$(command -v "$candidate")
       return
     fi
   done
+  echo 'No usable system Python with venv/pip found; installing local Python.'
   # No system modifications. Bootstrap a pinned user-local interpreter.
   [[ $(uname -m) == x86_64 ]] || { echo 'This package supports x86_64 Linux; another architecture requires review.' >&2; return 30; }
   for candidate in curl tar sha256sum; do command -v "$candidate" >/dev/null || { echo "Missing bootstrap tool: $candidate" >&2; return 30; }; done
@@ -46,6 +62,7 @@ choose_python() {
   export UV_PYTHON_INSTALL_DIR="$root/python"
   "$root/uv-x86_64-unknown-linux-gnu/uv" python install 3.11.13
   VLA_PYTHON=$("$root/uv-x86_64-unknown-linux-gnu/uv" python find --managed-python 3.11.13)
+  python_supports_venv "$VLA_PYTHON" || { echo 'Local Python could not create a working virtual environment.' >&2; return 30; }
 }
 
 clone_exact() {

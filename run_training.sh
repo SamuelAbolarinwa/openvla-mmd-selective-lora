@@ -21,25 +21,13 @@ STAGE=preflight
 bash "$REPO_DIR/preflight.sh" "$RUN_DIR"
 
 cd "$REPO_DIR"
+STAGE=source_verification
+choose_python
+"$VLA_PYTHON" "$REPO_DIR/scripts/verify_run_source.py" \
+  --repo-dir "$REPO_DIR" --run-dir "$RUN_DIR" --freeze
 STAGE=training_environment
 bash "$REPO_DIR/setup_env.sh" "$RUN_DIR"
 source "$REPO_DIR/.venv/bin/activate"
-python - "$REPO_DIR" "$RUN_DIR" <<'FREEZE'
-from pathlib import Path
-import hashlib, json, sys
-repo, run = map(Path, sys.argv[1:])
-config = json.loads((repo/'config.json').read_text())
-target = run/'config.json'
-if target.exists():
-    assert json.loads(target.read_text()) == config, 'Run configuration changed; use original settings or a new run directory'
-else: target.write_text(json.dumps(config, indent=2)+'\n')
-files = sorted(list(repo.glob('*.sh')) + list((repo/'scripts').glob('*.py')) + list(repo.glob('requirements*.txt')) + [repo/'constraints.txt'])
-manifest={str(f.relative_to(repo)):hashlib.sha256(f.read_bytes()).hexdigest() for f in files}
-target=run/'source_manifest.json'
-if target.exists():
-    assert json.loads(target.read_text()) == manifest, 'Package source changed since run began; retain the original package for resume'
-else: target.write_text(json.dumps(manifest,indent=2)+'\n')
-FREEZE
 
 export HF_HOME="${VLA_CACHE_DIR:-$REPO_DIR/cache}/huggingface"
 export TOKENIZERS_PARALLELISM=false

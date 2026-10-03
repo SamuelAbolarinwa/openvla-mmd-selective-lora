@@ -22,6 +22,87 @@ orch = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(orch)
 
 class Contracts(unittest.TestCase):
+    def test_python_bootstrap_when_system_venv_is_broken(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bin_dir = root / 'bin'; bin_dir.mkdir()
+            broken = bin_dir / 'broken-python'
+            broken.write_text('#!/bin/bash\nif [[ "$1" == -c ]]; then exec "$AUDIT_REAL_PYTHON" -c "import venv, ensurepip"; fi\nexit 9\n')
+            broken.chmod(0o755)
+            for name in ['python3.11', 'python3.10', 'python3']:
+                (bin_dir / name).symlink_to(broken)
+            # Simulate the bootstrap's compatible interpreter while exercising
+            # real venv creation, including when tests run under Python 3.12+.
+            usable = root / 'usable-python'
+            usable.write_text('#!/bin/bash\nif [[ "$1" == -c ]]; then exec "$AUDIT_REAL_PYTHON" -c "import venv, ensurepip"; fi\nexec "$AUDIT_REAL_PYTHON" "$@"\n')
+            usable.chmod(0o755)
+            repo = root / 'repo'
+            uv = repo / 'tools/uv-x86_64-unknown-linux-gnu/uv'
+            uv.parent.mkdir(parents=True)
+            uv.write_text('#!/bin/bash\nprintf "%s\\n" "$*" >> "$AUDIT_UV_CALLS"\nif [[ "$2" == find ]]; then printf "%s\\n" "$AUDIT_BOOTSTRAP_PYTHON"; fi\n')
+            uv.chmod(0o755)
+            env = os.environ.copy(); env.pop('PYTHON_BIN', None)
+            env.update(PATH=str(bin_dir) + ':' + env['PATH'],
+                       AUDIT_REAL_PYTHON=str(Path(sys.executable).resolve()),
+                       AUDIT_UV_CALLS=str(root / 'uv_calls'),
+                       AUDIT_BOOTSTRAP_PYTHON=str(usable))
+            result = subprocess.run(['bash', '-c',
+                'source "$1"; REPO_DIR="$2"; choose_python; [[ "$VLA_PYTHON" == "$AUDIT_BOOTSTRAP_PYTHON" ]]',
+                'audit', str(ROOT / 'common.sh'), str(repo)], env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn('python install 3.11.13', (root / 'uv_calls').read_text())
+            self.assertIn('python find --managed-python 3.11.13', (root / 'uv_calls').read_text())
+
+    def test_explicit_broken_python_has_actionable_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            broken = Path(tmp) / 'python'
+            broken.write_text('#!/bin/bash\nexit 1\n'); broken.chmod(0o755)
+            env = dict(os.environ, PYTHON_BIN=str(broken))
+            result = subprocess.run(['bash', '-c', 'source "$1"; choose_python',
+                                     'audit', str(ROOT / 'common.sh')], env=env,
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 30)
+            self.assertIn('Unset it to allow automatic selection', result.stderr)
+
+    def test_run_provenance_rejects_changed_or_missing_records(self):
+        spec = importlib.util.spec_from_file_location('provenance', ROOT / 'scripts/verify_run_source.py')
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / 'repo'; shutil.copytree(ROOT, repo, ignore=shutil.ignore_patterns('.git', '__pycache__'))
+            run = Path(tmp) / 'run'; run.mkdir()
+            with self.assertRaises(RuntimeError): module.verify_run(repo, run)
+            module.verify_run(repo, run, freeze=True)
+            module.verify_run(repo, run)
+            evaluator = repo / 'scripts/evaluate_libero.py'
+            original = evaluator.read_text(); evaluator.write_text(original + '\n# changed evaluator\n')
+            with self.assertRaises(RuntimeError): module.verify_run(repo, run)
+            evaluator.write_text(original)
+            config = repo / 'config.json'; cfg = json.loads(config.read_text()); cfg['seed'] += 1
+            config.write_text(json.dumps(cfg))
+            with self.assertRaises(RuntimeError): module.verify_run(repo, run, freeze=True)
+
+    def test_evaluation_resume_rejects_changed_evaluator(self):
+        import hashlib
+        source = ROOT / 'scripts/evaluate_libero.py'
+        tree = ast.parse(source.read_text())
+        funcs = [node for node in tree.body if isinstance(node, ast.FunctionDef)
+                 and node.name in {'evaluation_identity', 'load_progress'}]
+        ns = {'Path': Path, 'json': json, 'hashlib': hashlib, '__file__': str(source)}
+        exec(compile(ast.Module(body=funcs, type_ignores=[]), '<evaluation identity>', 'exec'), ns)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); checkpoint = root / 'checkpoint'; checkpoint.mkdir()
+            (checkpoint / 'config.json').write_text('{}')
+            (checkpoint / 'MERGE_COMPLETE.json').write_text('{}')
+            identity = ns['evaluation_identity'](checkpoint, 15, 7, 0, 280, 10)
+            progress = root / 'progress.json'
+            record = {'identity': identity, 'episodes': {'0:0': {'success': True}}}
+            progress.write_text(json.dumps(record))
+            self.assertEqual(ns['load_progress'](progress, identity), record)
+            changed = root / 'evaluate.py'; changed.write_text(source.read_text() + '\n# changed evaluator\n')
+            ns['__file__'] = str(changed)
+            new_identity = ns['evaluation_identity'](checkpoint, 15, 7, 0, 280, 10)
+            with self.assertRaises(RuntimeError): ns['load_progress'](progress, new_identity)
+
     def test_scientific_configuration(self):
         cfg=json.loads((ROOT/'config.json').read_text())
         self.assertEqual(cfg['mmd_selected_layers'], list(range(9,24))+[25])

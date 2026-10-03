@@ -17,6 +17,10 @@ flock -n 9 || { echo 'Evaluation is already running in this directory.' >&2; exi
 [[ -f "$RUN_DIR/TRAINING_COMPLETE.txt" ]] || { echo 'Training/merge completion marker missing.' >&2; exit 2; }
 
 cd "$REPO_DIR"
+STAGE=source_verification
+choose_python
+"$VLA_PYTHON" "$REPO_DIR/scripts/verify_run_source.py" \
+  --repo-dir "$REPO_DIR" --run-dir "$RUN_DIR"
 STAGE=evaluation_environment
 bash "$REPO_DIR/setup_eval_env.sh" "$RUN_DIR"
 source "$REPO_DIR/.venv-eval/bin/activate"

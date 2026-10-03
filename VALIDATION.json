@@ -6,7 +6,7 @@
     "python_compilation": "PASS",
     "offline_contract_tests": {
       "status": "PASS",
-      "count": 9
+      "count": 13
     },
     "python_311_dependency_installation": "PASS",
     "pip_check_with_patched_robosuite": "PASS",
@@ -109,5 +109,19 @@
     "torch": "2.5.1+cpu",
     "tensorflow_cpu": "2.15.1",
     "robosuite": "1.4.1 with headless OpenCV metadata"
+  },
+  "source_fix_validation": {
+    "validated_at_utc": "2026-10-02T16:19:32.654187+00:00",
+    "bash_syntax": "PASS",
+    "python_compilation": "PASS",
+    "offline_contract_tests": 13,
+    "real_python_311_venv_and_pip_probe": "PASS",
+    "regressions_checked": [
+      "Automatic bootstrap when system Python cannot create a virtual environment",
+      "Actionable error for an explicit unusable PYTHON_BIN",
+      "Changed or missing run provenance rejected",
+      "Changed evaluator rejected when resuming episode records"
+    ],
+    "gpu_training_executed": false
   }
 }
