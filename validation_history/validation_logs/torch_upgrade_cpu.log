@@ -1,0 +1,7 @@
+`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`.
+/tmp/vla-blackwell-validation/lib/python3.11/site-packages/peft/utils/save_and_load.py:195: UserWarning: Could not find a config file in  - will assume that the vocabulary was not modified.
+  warnings.warn(
+PASS: torch 2.7.1+cpu, torchvision 0.22.1+cpu
+PASS: tiny Llama LoRA backward, non-reentrant checkpointing, adapter save/fresh reload, optimizer load
+PASS: legacy NumPy simulator states load through the updated evaluation helper
+CPU regression only: no OpenVLA weights, dataset, simulator or CUDA execution

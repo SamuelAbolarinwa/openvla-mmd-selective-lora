@@ -7,9 +7,10 @@ PYTHON=${PYTHON_BIN:-python3}
 import pathlib, sys
 root=pathlib.Path(sys.argv[1])
 for path in root.rglob('*.py'):
-    if any(p in path.parts for p in ['third_party','tools','.venv','.venv-eval']): continue
+    if any(p in path.parts for p in ['third_party','tools','.venv','.venv-eval','.venv-cluster','validation_history']): continue
     compile(path.read_text(),str(path),'exec')
 print('Python/Bash syntax: PASS')
 PY
 "$PYTHON" "$REPO_DIR/tests/offline_validation.py"
+"$PYTHON" "$REPO_DIR/tests/cluster_validation.py"
 echo 'OFFLINE PACKAGE VALIDATION: PASS (no real model, CUDA or simulator execution)'

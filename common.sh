@@ -2,6 +2,13 @@
 # Shared functions; called from Bash launchers, never from a notebook.
 set -Eeuo pipefail
 export PYTHONUNBUFFERED=1
+export PIP_NO_CACHE_DIR=1
+export PIP_DISABLE_PIP_VERSION_CHECK=1
+# Keep build/download scratch in the budgeted filesystem, not an unknown /tmp.
+if [[ -n "${REPO_DIR:-}" ]]; then
+  export TMPDIR="$REPO_DIR/tools/tmp"
+  mkdir -p "$TMPDIR"
+fi
 export TOKENIZERS_PARALLELISM=false
 export WANDB_MODE=disabled
 export TF_CPP_MIN_LOG_LEVEL=2
@@ -79,10 +86,11 @@ clone_exact() {
 torch_install() {
   local runtime index
   runtime=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -n 1)
-  # cu121 works with modern H100 drivers; actual CUDA execution is checked below.
-  index=${VLA_TORCH_INDEX:-https://download.pytorch.org/whl/cu121}
+  # CUDA 12.8 wheels support Blackwell as well as Ada, Ampere and Hopper.
+  # Pin the CUDA build explicitly so an existing CPU wheel cannot satisfy it.
+  index=${VLA_TORCH_INDEX:-https://download.pytorch.org/whl/cu128}
   echo "Driver: $runtime; PyTorch index: $index"
-  python -m pip install --retries 3 --timeout 60 --index-url "$index" torch==2.5.1 torchvision==0.20.1
+  python -m pip install --retries 3 --timeout 60 --index-url "$index" torch==2.7.1+cu128 torchvision==0.22.1+cu128
 }
 
 attach_sources() {
@@ -97,4 +105,13 @@ path = pathlib.Path(site.getsitepackages()[0]) / 'vla_sources.pth'
 path.write_text(''.join(str(root / 'third_party' / n) + '\n' for n in names))
 print('Pinned source paths attached:', path)
 PY
+}
+
+ensure_project_venv() {
+  VENV="$REPO_DIR/.venv-cluster"
+  if [[ -e "$VENV" ]] && ! "$VENV/bin/python" -c 'import sys; assert (3,10) <= sys.version_info[:2] <= (3,11); assert sys.prefix != sys.base_prefix' >/dev/null 2>&1; then
+    echo "Incompatible project environment at $VENV; preserving it under a backup name."
+    mv -- "$VENV" "$VENV.incompatible.$(date +%s).$$"
+  fi
+  if [[ ! -x "$VENV/bin/python" ]]; then "$VLA_PYTHON" -m venv "$VENV"; fi
 }

@@ -23,7 +23,7 @@ choose_python
   --repo-dir "$REPO_DIR" --run-dir "$RUN_DIR"
 STAGE=evaluation_environment
 bash "$REPO_DIR/setup_eval_env.sh" "$RUN_DIR"
-source "$REPO_DIR/.venv-eval/bin/activate"
+source "$REPO_DIR/.venv-cluster/bin/activate"
 ASSETS="$RUN_DIR/assets.json"
 LIBERO_CONFIG="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["libero_config_dir"])' "$ASSETS")"
 export LIBERO_CONFIG_PATH="$LIBERO_CONFIG"

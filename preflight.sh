@@ -97,17 +97,8 @@ for tool in bash git curl tar sha256sum flock timeout; do
   command -v "$tool" >/dev/null || { echo "Missing required tool: $tool" | tee -a "$OUT"; exit 22; }
 done
 [[ $(uname -m) == x86_64 ]] || { echo 'Only x86_64 Linux is supported by this pinned package.' | tee -a "$OUT"; exit 22; }
-# Conservative free-space reserve, checked before large downloads.
-# Operator may lower it only after confirming available storage/caches.
-MIN_FREE_GIB=${VLA_MIN_FREE_GIB:-200}
-[[ "$MIN_FREE_GIB" =~ ^[0-9]+$ ]] || { echo 'Invalid VLA_MIN_FREE_GIB'; exit 22; }
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-for root in "$RUN_DIR" "${VLA_CACHE_DIR:-$REPO_DIR/cache}" "${VLA_DATA_ROOT:-$REPO_DIR/data/modified_libero_rlds}" "$REPO_DIR"; do
-  mkdir -p "$root"
-  bytes=$(df -PB1 "$root" | awk 'NR==2 {print $4}')
-  if ((bytes < MIN_FREE_GIB * 1024 * 1024 * 1024)); then
-    echo "Insufficient free space at $root: need reserve ${MIN_FREE_GIB} GiB. Choose a larger filesystem." | tee -a "$OUT"
-    exit 23
-  fi
-done
-echo 'PREFLIGHT RESOURCE CHECK: PASS' | tee -a "$OUT"
+if [[ -z "${CUDA_VISIBLE_DEVICES:-}" ]]; then
+  echo 'Set CUDA_VISIBLE_DEVICES to the GPU index(es) or UUID(s) allocated to you. No GPU is selected automatically on this shared cluster.' | tee -a "$OUT"
+  exit 24
+fi
+echo 'PREFLIGHT RESOURCE CAPTURE: PASS; detailed storage check follows Python selection.' | tee -a "$OUT"

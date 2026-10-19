@@ -21,22 +21,10 @@ def main():
     ap.add_argument("--condition", required=True)
     args = ap.parse_args()
 
-    AutoConfig.register("openvla", OpenVLAConfig)
-    AutoImageProcessor.register(OpenVLAConfig, PrismaticImageProcessor)
-    AutoProcessor.register(OpenVLAConfig, PrismaticProcessor)
-    AutoModelForVision2Seq.register(OpenVLAConfig, OpenVLAForActionPrediction)
-
-    processor = AutoProcessor.from_pretrained(
-        args.base, trust_remote_code=True, local_files_only=True
-    )
-    base = AutoModelForVision2Seq.from_pretrained(
-        args.base,
-        torch_dtype=torch.bfloat16,
-        low_cpu_mem_usage=True,
-        trust_remote_code=True,
-        local_files_only=True,
-        attn_implementation="sdpa",
-    ).to("cuda:0")
+    from model_io import load_processor, load_base
+    processor = load_processor(args.base)
+    base = load_base(args.base, torch_dtype=torch.bfloat16,
+                     low_cpu_mem_usage=True, attn_implementation="sdpa").to("cuda:0")
     model = PeftModel.from_pretrained(base, args.adapter, is_trainable=False)
     model.eval()
 

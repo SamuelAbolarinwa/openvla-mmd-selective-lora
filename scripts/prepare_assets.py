@@ -40,6 +40,21 @@ def main():
         cache_dir=hf_cache,
     )).resolve()
 
+    # The original weight revision predates the tokenizer/processor upload.
+    # Fetch only processing assets from a separate immutable official revision.
+    processor_files = [
+        "preprocessor_config.json", "processor_config.json", "tokenizer.json",
+        "tokenizer.model", "tokenizer_config.json", "special_tokens_map.json",
+        "added_tokens.json",
+    ]
+    processor_snapshot = Path(snapshot_download(
+        repo_id=cfg["model_id"], revision=cfg["processor_revision"],
+        cache_dir=hf_cache, allow_patterns=processor_files,
+    )).resolve()
+    for name in processor_files:
+        if not (processor_snapshot / name).is_file():
+            raise FileNotFoundError(f"Missing pinned processing asset: {name}")
+
     print("Downloading LIBERO-Object RLDS...")
     snapshot_download(
         repo_id=cfg["dataset_repo"],
@@ -66,6 +81,9 @@ def main():
             os.symlink(item, dst)
         else:
             shutil.copy2(item, dst)
+
+    for name in processor_files:
+        shutil.copy2(processor_snapshot / name, overlay / name)
 
     openvla_src = args.repo_dir / "third_party" / "openvla"
     hf_src = openvla_src / "prismatic" / "extern" / "hf"
@@ -122,6 +140,7 @@ def main():
         "libero_config_dir": str(libero_cfg_dir.resolve()),
         "model_revision": cfg["model_revision"],
         "dataset_revision": cfg["dataset_revision"],
+        "processor_revision": cfg["processor_revision"],
         "dlimp_commit": cfg["dlimp_commit"],
         "openvla_commit": cfg["openvla_commit"],
         "libero_commit": cfg["libero_commit"],

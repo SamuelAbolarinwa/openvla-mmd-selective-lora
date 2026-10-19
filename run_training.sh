@@ -25,9 +25,11 @@ STAGE=source_verification
 choose_python
 "$VLA_PYTHON" "$REPO_DIR/scripts/verify_run_source.py" \
   --repo-dir "$REPO_DIR" --run-dir "$RUN_DIR" --freeze
+STAGE=storage_budget
+"$VLA_PYTHON" "$REPO_DIR/scripts/check_storage.py" --repo-dir "$REPO_DIR" --run-dir "$RUN_DIR"
 STAGE=training_environment
 bash "$REPO_DIR/setup_env.sh" "$RUN_DIR"
-source "$REPO_DIR/.venv/bin/activate"
+source "$REPO_DIR/.venv-cluster/bin/activate"
 
 export HF_HOME="${VLA_CACHE_DIR:-$REPO_DIR/cache}/huggingface"
 export TOKENIZERS_PARALLELISM=false
@@ -39,8 +41,8 @@ python -u "$REPO_DIR/scripts/prepare_assets.py" \
   --run-dir "$RUN_DIR" \
   2>&1 | tee "$RUN_DIR/logs/prepare_assets.log"
 
-STAGE=evaluation_environment
-bash "$REPO_DIR/setup_eval_env.sh" "$RUN_DIR"
+STAGE=processor_preflight
+python -u "$REPO_DIR/scripts/check_processor.py" --assets "$RUN_DIR/assets.json" --output "$RUN_DIR/logs/processor_report.json"
 STAGE=renderer_preflight
 bash "$REPO_DIR/check_renderer.sh" "$RUN_DIR"
 
@@ -67,7 +69,7 @@ LIBERO_CONFIG_PATH=$(python -c 'import json,sys; print(json.load(open(sys.argv[1
 SMOKE_ROOT=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["output_root"])' "$RUN_DIR/SMOKE_COMPLETE.json")
 SMOKE_BASE=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["base_model_overlay"])' "$RUN_DIR/assets.json")
 for condition in uniform mmd_selective; do
-  "$REPO_DIR/.venv-eval/bin/python" -u "$REPO_DIR/scripts/evaluate_libero.py" \
+  "$REPO_DIR/.venv-cluster/bin/python" -u "$REPO_DIR/scripts/evaluate_libero.py" \
     --mode combined_smoke --checkpoint "$SMOKE_BASE" \
     --adapter "$SMOKE_ROOT/$condition/final_adapter" \
     --stats "$SMOKE_ROOT/$condition/dataset_statistics.json" \

@@ -17,11 +17,44 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT/'scripts'))
 spec = importlib.util.spec_from_file_location('orchestrator', ROOT/'scripts/orchestrate_training.py')
 orch = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(orch)
 
 class Contracts(unittest.TestCase):
+    def test_cuda_build_is_explicitly_installed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fake = Path(tmp) / 'python'
+            fake.write_text('#!/bin/bash\nprintf "%s\\n" "$@"\n')
+            fake.chmod(0o755)
+            env = dict(os.environ, AUDIT_FAKE_PYTHON=str(fake)); env.pop('VLA_TORCH_INDEX', None)
+            result = subprocess.run(['bash', '-c', 'source "$1"; python() { "$AUDIT_FAKE_PYTHON" "$@"; }; nvidia-smi() { echo 595.71.05; }; torch_install',
+                                     'audit', str(ROOT / 'common.sh'), str(fake)],
+                                    env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('https://download.pytorch.org/whl/cu128', result.stdout)
+            self.assertIn('torch==2.7.1+cu128', result.stdout)
+            self.assertIn('torchvision==0.22.1+cu128', result.stdout)
+
+    def test_legacy_simulator_states_have_explicit_load_policy(self):
+        tree = ast.parse((ROOT / 'scripts/evaluate_libero.py').read_text())
+        function = next(n for n in tree.body if isinstance(n, ast.FunctionDef)
+                        and n.name == 'load_init_states')
+        calls = []
+        def load(path, **kwargs):
+            calls.append((path, kwargs))
+            self.assertEqual(kwargs, {'map_location': 'cpu', 'weights_only': False})
+            return ['state']
+        ns = {'Path': Path, 'torch': types.SimpleNamespace(load=load),
+              'get_libero_path': lambda kind: '/trusted/init_states'}
+        exec(compile(ast.Module(body=[function], type_ignores=[]), '<state loader>', 'exec'), ns)
+        suite = types.SimpleNamespace(get_task=lambda i: types.SimpleNamespace(
+            problem_folder='libero_object', init_states_file='task.pruned_init'))
+        self.assertEqual(ns['load_init_states'](suite, 0), ['state'])
+        self.assertEqual(calls[0][0], Path('/trusted/init_states/libero_object/task.pruned_init'))
+        self.assertNotIn('.get_task_init_states(', (ROOT / 'scripts/evaluate_libero.py').read_text())
+
     def test_python_bootstrap_when_system_venv_is_broken(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -135,7 +168,7 @@ print('mock child complete')
 '''
             for name in ['train_condition','verify_adapter']:
                 (repo/'scripts'/f'{name}.py').write_text(fake)
-            env={'VLA_VISIBLE_GPU_COUNT':str(count),'VLA_SEQUENTIAL':str(int(sequential)),
+            env={'VLA_VISIBLE_GPU_COUNT':str(count),'VLA_SEQUENTIAL':str(int(sequential)), 'VLA_PARALLEL':'1',
                  'TEST_RECORD':str(record),'TEST_FAIL':str(int(failure))}
             if allocation is not None: env['CUDA_VISIBLE_DEVICES']=allocation
             with patch.dict(os.environ,env):

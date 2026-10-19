@@ -61,6 +61,14 @@ def suite():
     return s
 
 
+def load_init_states(task_suite, task_id):
+    # These legacy NumPy states come from the pinned LIBERO checkout.
+    # PyTorch 2.6+ defaults to weights_only=True, which rejects this format.
+    task = task_suite.get_task(task_id)
+    path = Path(get_libero_path("init_states")) / task.problem_folder / task.init_states_file
+    return torch.load(path, map_location="cpu", weights_only=False)
+
+
 def make_env(task, env_seed):
     bddl = os.path.join(
         get_libero_path("bddl_files"),
@@ -122,17 +130,10 @@ def load_model(checkpoint, device_index, adapter=None, stats_path=None):
         raise KeyError(f"No LIBERO-Object stats in {checkpoint}")
 
     torch.cuda.set_device(device_index)
-    processor = AutoProcessor.from_pretrained(
-        checkpoint, trust_remote_code=True, local_files_only=True
-    )
-    model = AutoModelForVision2Seq.from_pretrained(
-        checkpoint,
-        trust_remote_code=True,
-        local_files_only=True,
-        torch_dtype=torch.bfloat16,
-        low_cpu_mem_usage=True,
-        attn_implementation="sdpa",
-    ).to(f"cuda:{device_index}")
+    from model_io import load_processor, load_base
+    processor = load_processor(checkpoint)
+    model = load_base(checkpoint, torch_dtype=torch.bfloat16,
+                      low_cpu_mem_usage=True, attn_implementation="sdpa").to(f"cuda:{device_index}")
     if adapter is not None:
         model = PeftModel.from_pretrained(model, adapter, is_trainable=False).base_model.model
     model.eval()
@@ -175,7 +176,7 @@ def renderer_preflight(trials, env_seed):
     s = suite()
     for task_id in range(s.n_tasks):
         task = s.get_task(task_id)
-        states = s.get_task_init_states(task_id)
+        states = load_init_states(s, task_id)
         if len(states) < trials:
             raise RuntimeError(
                 f"Task {task_id}: only {len(states)} init states; need {trials}"
@@ -196,7 +197,7 @@ def combined_smoke(checkpoint, device_index, env_seed, adapter=None, stats_path=
     model, processor, key = load_model(checkpoint, device_index, adapter, stats_path)
     s = suite()
     task = s.get_task(0)
-    states = s.get_task_init_states(0)
+    states = load_init_states(s, 0)
     env = make_env(task, env_seed)
     try:
         env.seed(env_seed)
@@ -257,7 +258,7 @@ def evaluate(checkpoint, out_dir, trials, seed, env_seed, device_index, max_step
 
         for task_id in range(s.n_tasks):
             task = s.get_task(task_id)
-            states = s.get_task_init_states(task_id)
+            states = load_init_states(s, task_id)
             if len(states) < trials:
                 raise RuntimeError(
                     f"Task {task_id}: only {len(states)} init states; need {trials}"

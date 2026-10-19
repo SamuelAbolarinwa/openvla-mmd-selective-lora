@@ -1,0 +1,54 @@
+Python/Bash syntax: PASS
+test_checkpoint_commit_survives_failed_next_save (__main__.Contracts.test_checkpoint_commit_survives_failed_next_save) ... ok
+test_cuda_build_is_explicitly_installed (__main__.Contracts.test_cuda_build_is_explicitly_installed) ... ok
+test_evaluation_resume_rejects_changed_evaluator (__main__.Contracts.test_evaluation_resume_rejects_changed_evaluator) ... ok
+test_explicit_broken_python_has_actionable_error (__main__.Contracts.test_explicit_broken_python_has_actionable_error) ... ok
+test_force_sequential (__main__.Contracts.test_force_sequential) ... ok
+test_legacy_simulator_states_have_explicit_load_policy (__main__.Contracts.test_legacy_simulator_states_have_explicit_load_policy) ... ok
+test_log_bundle_excludes_weights (__main__.Contracts.test_log_bundle_excludes_weights) ... ok
+test_missing_gpu_keeps_preflight_log (__main__.Contracts.test_missing_gpu_keeps_preflight_log) ... ok
+test_numeric_gpu_allocation (__main__.Contracts.test_numeric_gpu_allocation) ... ok
+test_python_bootstrap_when_system_venv_is_broken (__main__.Contracts.test_python_bootstrap_when_system_venv_is_broken) ... ok
+test_run_provenance_rejects_changed_or_missing_records (__main__.Contracts.test_run_provenance_rejects_changed_or_missing_records) ... ok
+test_scientific_configuration (__main__.Contracts.test_scientific_configuration) ... ok
+test_single_gpu_sequential (__main__.Contracts.test_single_gpu_sequential) ... ok
+test_stop_other_condition_on_failure (__main__.Contracts.test_stop_other_condition_on_failure) ... ok
+test_uuid_gpu_allocation (__main__.Contracts.test_uuid_gpu_allocation) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 3.654s
+
+OK
+test_all_runtime_model_loaders_use_explicit_source_classes (__main__.ClusterFixes.test_all_runtime_model_loaders_use_explicit_source_classes) ... ok
+test_asset_overlay_fills_missing_processor_without_replacing_weights (__main__.ClusterFixes.test_asset_overlay_fills_missing_processor_without_replacing_weights) ... ok
+test_cgroup_limit_takes_priority_over_host_free_memory (__main__.ClusterFixes.test_cgroup_limit_takes_priority_over_host_free_memory) ... ok
+test_clean_108_decimal_gb_fits_budget_but_70_gib_fails (__main__.ClusterFixes.test_clean_108_decimal_gb_fits_budget_but_70_gib_fails) ... ok
+test_existing_files_credit_is_capped_and_margin_remains (__main__.ClusterFixes.test_existing_files_credit_is_capped_and_margin_remains) ... ok
+test_existing_operator_environment_is_not_used (__main__.ClusterFixes.test_existing_operator_environment_is_not_used) ... ok
+test_foreign_latest_pointer_refuses_pruning (__main__.ClusterFixes.test_foreign_latest_pointer_refuses_pruning) ... ok
+test_retention_keeps_latest_previous_and_incomplete_evidence (__main__.ClusterFixes.test_retention_keeps_latest_previous_and_incomplete_evidence) ... ok
+test_wrong_project_python_is_preserved_and_rebuilt (__main__.ClusterFixes.test_wrong_project_python_is_preserved_and_rebuilt) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 2.065s
+
+OK
+Downloading/pinning OpenVLA base snapshot...
+Downloading LIBERO-Object RLDS...
+{
+  "base_model_overlay": "/tmp/tmpxk3wjjnc/repo/base_model_overlay",
+  "base_snapshot": "/tmp/tmpxk3wjjnc/weights",
+  "dataset_root": "/tmp/tmpxk3wjjnc/repo/data/modified_libero_rlds",
+  "dataset_dir": "/tmp/tmpxk3wjjnc/repo/data/modified_libero_rlds/libero_object_no_noops",
+  "openvla_source": "/tmp/tmpxk3wjjnc/repo/third_party/openvla",
+  "libero_source": "/tmp/tmpxk3wjjnc/repo/third_party/LIBERO",
+  "libero_config_dir": "/tmp/tmpxk3wjjnc/repo/libero_config",
+  "model_revision": "cf0c8cbad1e427993a2e02da9c5182a91c33f869",
+  "dataset_revision": "6ce6aaaaabdbe590b1eef5cd29c0d33f14a08551",
+  "processor_revision": "47a0ec7fc4ec123775a391911046cf33cf9ed83f",
+  "dlimp_commit": "040105d256bd28866cc6620621a3d5f7b6b91b46",
+  "openvla_commit": "c8f03f48af692657d3060c19588038c7220e9af9",
+  "libero_commit": "8f1084e3132a39270c3a13ebe37270a43ece2a01"
+}
+ASSET PREPARATION: PASS
+OFFLINE PACKAGE VALIDATION: PASS (no real model, CUDA or simulator execution)

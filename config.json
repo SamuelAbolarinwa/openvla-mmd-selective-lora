@@ -52,5 +52,6 @@
     "settle_steps": 10
   },
   "dataset_revision": "6ce6aaaaabdbe590b1eef5cd29c0d33f14a08551",
-  "dlimp_commit": "040105d256bd28866cc6620621a3d5f7b6b91b46"
+  "dlimp_commit": "040105d256bd28866cc6620621a3d5f7b6b91b46",
+  "processor_revision": "47a0ec7fc4ec123775a391911046cf33cf9ed83f"
 }

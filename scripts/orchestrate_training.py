@@ -43,6 +43,13 @@ def gpu_tokens(visible, inherited):
 
 
 def launch_pair(repo_dir, run_dir, phase, resume=False):
+    if phase == 'smoke' and (run_dir/'SMOKE_COMPLETE.json').is_file():
+        marker=json.loads((run_dir/'SMOKE_COMPLETE.json').read_text())
+        previous=Path(marker['output_root'])
+        if marker['status']=='PASS' and all((previous/c/'completion.json').is_file() and
+                (previous/c/'final_adapter/adapter_model.safetensors').is_file() for c in ['uniform','mmd_selective']):
+            print('Reusing completed smoke from this frozen run:', previous, flush=True)
+            return
     cfg = json.loads((run_dir / "config.json").read_text())
     assets = run_dir / "assets.json"
     tc = cfg["training"]
@@ -68,7 +75,13 @@ def launch_pair(repo_dir, run_dir, phase, resume=False):
         raise RuntimeError("No CUDA GPU visible to orchestrator")
 
     tokens = gpu_tokens(visible, os.environ.get('CUDA_VISIBLE_DEVICES'))
-    parallel = visible >= 2 and os.environ.get('VLA_SEQUENTIAL', '0') != '1' 
+    # Large unchanged RLDS shuffle buffers need substantial host memory.
+    # On smaller machines, sequential conditions retain the scientific recipe.
+    from host_resources import available_memory_bytes
+    available_gib = available_memory_bytes() / 1024**3
+    enough_ram = available_gib >= 64 or os.environ.get('VLA_PARALLEL') == '1'
+    print(f'Available host RAM: {available_gib:.1f} GiB; parallel-memory gate: {enough_ram}', flush=True)
+    parallel = enough_ram and visible >= 2 and os.environ.get('VLA_SEQUENTIAL', '0') != '1' 
     conditions = [("uniform", 0), ("mmd_selective", 1 if parallel else 0)]
 
     def command(condition):
@@ -119,7 +132,7 @@ def launch_pair(repo_dir, run_dir, phase, resume=False):
                         proc.kill(); proc.wait()
                 thread.join(timeout=5)
     else:
-        print("Only one GPU visible; running conditions sequentially.", flush=True)
+        print("Running conditions sequentially (GPU count, available RAM or VLA_SEQUENTIAL).", flush=True)
         for condition, gpu in conditions:
             env = os.environ.copy()
             env["CUDA_VISIBLE_DEVICES"] = tokens[gpu]

@@ -4,7 +4,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUN_DIR="${1:?Usage: check_renderer.sh RUN_DIR}"
 source "$REPO_DIR/common.sh"
 driver_log check_renderer
-source "$REPO_DIR/.venv-eval/bin/activate"
+source "$REPO_DIR/.venv-cluster/bin/activate"
 export LIBERO_CONFIG_PATH
 LIBERO_CONFIG_PATH=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["libero_config_dir"])' "$RUN_DIR/assets.json")
 resolve_egl() {

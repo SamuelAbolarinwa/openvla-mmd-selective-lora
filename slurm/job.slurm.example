@@ -15,11 +15,11 @@
 # Examples ONLY; uncomment/adapt for the local cluster:
 # #SBATCH --partition=<gpu-partition>
 # #SBATCH --account=<project-account>
-# #SBATCH --gres=gpu:h100:2
+# #SBATCH --gres=gpu:2
 # #SBATCH --time=7-00:00:00
 
 set -Eeuo pipefail
-cd /path/to/openvla_university_experiment
+cd /path/to/openvla-mmd-selective-lora
 
 # If the cluster uses modules, load the site-provided Python/CUDA module(s) here.
 # Example only:

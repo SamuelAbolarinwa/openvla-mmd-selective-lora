@@ -193,6 +193,8 @@ def save_checkpoint(
         'adapter_dir': str(checkpoint_dir.relative_to(run_dir) / 'adapter'),
         'state_file': str(checkpoint_dir.relative_to(run_dir) / 'training_state.pt'),
     })
+    from checkpoint_retention import prune_checkpoints
+    prune_checkpoints(run_dir, keep=2)
     print(f"CHECKPOINT SAVED: step={step} -> {checkpoint_dir}", flush=True)
 
 
@@ -243,6 +245,7 @@ def main():
         "gradient_checkpointing": train_cfg["gradient_checkpointing"],
         "model_revision": assets["model_revision"],
         "dataset_revision": assets["dataset_revision"],
+        "processor_revision": assets["processor_revision"],
         "seed": seed,
         "smoke": args.smoke,
         "base_model_overlay": assets["base_model_overlay"],
@@ -294,25 +297,11 @@ def main():
             flush=True,
         )
 
-        AutoConfig.register("openvla", OpenVLAConfig)
-        AutoImageProcessor.register(OpenVLAConfig, PrismaticImageProcessor)
-        AutoProcessor.register(OpenVLAConfig, PrismaticProcessor)
-        AutoModelForVision2Seq.register(OpenVLAConfig, OpenVLAForActionPrediction)
-
+        from model_io import load_processor, load_base
         base_path = Path(assets["base_model_overlay"])
-        processor = AutoProcessor.from_pretrained(
-            base_path,
-            trust_remote_code=True,
-            local_files_only=True,
-        )
-        base = AutoModelForVision2Seq.from_pretrained(
-            base_path,
-            torch_dtype=torch.bfloat16,
-            low_cpu_mem_usage=True,
-            trust_remote_code=True,
-            local_files_only=True,
-            attn_implementation="sdpa",
-        ).to(device)
+        processor = load_processor(base_path)
+        base = load_base(base_path, torch_dtype=torch.bfloat16,
+                         low_cpu_mem_usage=True, attn_implementation="sdpa").to(device)
         image_sizes = tuple(base.config.image_sizes)
         if train_cfg['gradient_checkpointing']:
             base.language_model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={'use_reentrant': False})
@@ -440,6 +429,9 @@ def main():
         optimizer_step = start_step
         micro_step = 0
         start_time = time.time()
+        last_update_time = time.monotonic()
+        update_durations = []
+        torch.cuda.reset_peak_memory_stats()
         optimizer.zero_grad(set_to_none=True)
         model.train()
 
@@ -515,6 +507,23 @@ def main():
             optimizer.step()
             optimizer.zero_grad(set_to_none=True)
             optimizer_step += 1
+            torch.cuda.synchronize()
+            now = time.monotonic()
+            update_seconds = now - last_update_time
+            last_update_time = now
+            update_durations.append(update_seconds)
+            atomic_json(run_dir / 'timing.json', {
+                'successful_updates_this_process': len(update_durations),
+                'seconds_per_update': update_durations,
+                'warmup_excluded_mean_seconds': (sum(update_durations[1:]) / len(update_durations[1:])
+                    if len(update_durations)>1 else None),
+                'effective_batch': batch_size * grad_accum,
+                'projected_training_hours_for_50000': (sum(update_durations[1:]) / len(update_durations[1:])
+                    * 50000 / 3600 if len(update_durations)>1 else None),
+                'peak_allocated_gib': torch.cuda.max_memory_allocated()/1024**3,
+                'peak_reserved_gib': torch.cuda.max_memory_reserved()/1024**3,
+                'scope': 'Preliminary short-run estimate; includes data and metrics overhead. Checkpoint time enters the next update.'})
+            print(f'[{condition}] complete optimiser update {optimizer_step}: {update_seconds:.2f} seconds', flush=True)
 
             smooth_loss = sum(recent_losses) / len(recent_losses)
             smooth_acc = sum(recent_accs) / len(recent_accs)

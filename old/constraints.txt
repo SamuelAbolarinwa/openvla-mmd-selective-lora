@@ -1,0 +1,14 @@
+numpy==1.26.4
+transformers==4.40.1
+tokenizers==0.19.1
+timm==0.9.10
+peft==0.11.1
+accelerate==0.30.1
+mujoco==3.3.2
+robosuite==1.4.1
+opencv-python-headless==4.9.0.80
+numba==0.59.1
+scipy==1.11.4
+matplotlib==3.8.4
+torch==2.5.1
+torchvision==0.20.1
