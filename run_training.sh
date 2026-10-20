@@ -75,6 +75,10 @@ for condition in uniform mmd_selective; do
     --stats "$SMOKE_ROOT/$condition/dataset_statistics.json" \
     2>&1 | tee "$RUN_DIR/logs/smoke_${condition}_simulator.log"
 done
+STAGE=merged_model_smoke
+python -u "$REPO_DIR/scripts/qualify_merge.py" --repo-dir "$REPO_DIR" --run-dir "$RUN_DIR" \
+  2>&1 | tee "$RUN_DIR/logs/merge_smoke.log"
+
 if [[ "${VLA_SMOKE_ONLY:-0}" == 1 ]]; then
   STAGE=complete
   echo 'UNIVERSITY PRODUCTION-PROFILE SMOKE: PASS; long training was not started.'

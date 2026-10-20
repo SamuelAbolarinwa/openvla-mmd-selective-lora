@@ -163,7 +163,7 @@ if kind=='train_condition' and os.environ.get('TEST_FAIL')=='1':
 if kind=='train_condition':
  root=Path(sys.argv[sys.argv.index('--output-root')+1])/condition
  root.mkdir(parents=True,exist_ok=True)
- (root/'completion.json').write_text(json.dumps({'audit':{'non_llm_modules':['same_module']}}))
+ (root/'completion.json').write_text(json.dumps({'audit':{'non_llm_modules':['same_module']},'resumed_from_step':1,'optimizer_steps':int(sys.argv[sys.argv.index('--max-steps')+1])}))
 print('mock child complete')
 '''
             for name in ['train_condition','verify_adapter']:

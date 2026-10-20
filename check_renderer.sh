@@ -8,27 +8,15 @@ source "$REPO_DIR/.venv-cluster/bin/activate"
 export LIBERO_CONFIG_PATH
 LIBERO_CONFIG_PATH=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["libero_config_dir"])' "$RUN_DIR/assets.json")
 resolve_egl() {
-# Existing administrator-provided EGL selection takes priority.
-if [[ -z "${VLA_EGL_DEVICE_ID:-${MUJOCO_EGL_DEVICE_ID:-}}" ]]; then
-  VLA_EGL_DEVICE_ID=$(python - <<'PY'
-import os, subprocess
-visible=os.environ.get('CUDA_VISIBLE_DEVICES', '').split(',')[0]
-if visible.isdigit(): print(visible)
-elif visible.startswith('GPU-'):
-    lines=subprocess.check_output(['nvidia-smi','--query-gpu=index,uuid','--format=csv,noheader'],text=True).splitlines()
-    matches=[line.split(',')[0].strip() for line in lines if line.split(',')[1].strip().startswith(visible)]
-    if len(matches)!=1: raise RuntimeError('Cannot map GPU UUID to EGL device; supply VLA_EGL_DEVICE_ID')
-    print(matches[0])
-elif visible.startswith('MIG-'): raise RuntimeError('MIG EGL rendering requires an administrator-verified VLA_EGL_DEVICE_ID; OSMesa can be used without this mapping')
-else: print(0)
-PY
-) || return 1
-else
-  VLA_EGL_DEVICE_ID=${VLA_EGL_DEVICE_ID:-$MUJOCO_EGL_DEVICE_ID}
-fi
-[[ "$VLA_EGL_DEVICE_ID" =~ ^[0-9]+$ ]] || { echo 'EGL device ID must be a non-negative integer.' >&2; return 2; }
-export VLA_EGL_DEVICE_ID
- }
+  # EGL enumeration is not guaranteed to match CUDA/nvidia-smi numbering.
+  VLA_EGL_DEVICE_ID=${VLA_EGL_DEVICE_ID:-${MUJOCO_EGL_DEVICE_ID:-}}
+  if [[ ! "$VLA_EGL_DEVICE_ID" =~ ^[0-9]+$ ]]; then
+    echo 'EGL requires VLA_EGL_DEVICE_ID set to an administrator-verified EGL index for an allocated GPU. CUDA indices/UUIDs are not converted automatically. OSMesa needs no EGL mapping.' >&2
+    return 2
+  fi
+  export VLA_EGL_DEVICE_ID
+}
+
 TRIALS=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["evaluation"]["full_trials_per_task"])' "$RUN_DIR/config.json")
 REQUESTED_EGL=${VLA_EGL_DEVICE_ID:-${MUJOCO_EGL_DEVICE_ID:-}}
 CANDIDATES=(${VLA_RENDERER:-osmesa egl})

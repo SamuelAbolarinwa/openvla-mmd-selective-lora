@@ -1,35 +1,27 @@
 {
-  "release": "cluster-2026-10-19",
-  "checked_at_utc": "2026-10-19T14:31:51.513534+00:00",
-  "base_repository": "https://github.com/SamuelAbolarinwa/openvla-mmd-selective-lora",
-  "base_repository_commit": "5ff77ccc3aa8042f3d7284387758ab3c10c2ca45",
-  "status": "OFFLINE_VALIDATION_PASS_TARGET_SMOKE_PENDING",
-  "checks": {
-    "bash_and_python_syntax": "PASS",
-    "existing_offline_contract_tests": 15,
-    "cluster_regression_tests": 9,
-    "experimental_configuration_unchanged_except_pinned_processing_assets": true,
-    "storage_budget_fresh_single_filesystem_gib": 87.749,
-    "108_decimal_GB_fits_planning_budget": true
+  "date": "2026-10-20",
+  "base_commit": "a88ac860cd26bfeb9e1b1cba89664b4a7b635f07",
+  "status": "PASS_OFFLINE_ONLY",
+  "tests_passed": 33,
+  "suites": {
+    "offline_validation": 15,
+    "cluster_validation": 9,
+    "cluster_safety_validation": 9
   },
-  "inherited_runtime_evidence": {
-    "source": "User-supplied executed qualification v3 notebook",
-    "status": "Both layouts completed 3 FP16/FSDP updates and one fresh-process resume update on dual T4.",
-    "scope": "Different trainer/hardware; does not qualify cluster BF16 single-GPU memory/performance."
-  },
-  "target_checks_pending": [
-    "PyTorch CUDA kernels on the allocated Blackwell/Ada GPUs",
-    "Batch-16 BF16 memory fit and numerical stability for both layouts",
-    "Full 100000-item shuffle buffers within allocated host RAM",
-    "Shared training/evaluation dependency installation on the target node",
-    "Headless EGL/OSMesa and combined policy/simulator execution",
-    "Cluster smoke timings and long-run performance",
-    "Full 50000-update experiment and final evaluation"
+  "syntax": "All package Bash and Python sources passed",
+  "checks": [
+    "Nested cgroup v1/v2 and ancestor memory limits",
+    "Non-root and namespace cgroup mounts",
+    "Dataset statistics lock across processes",
+    "Fresh-process resume sequencing with subprocess fixtures",
+    "Merged-model qualification sequencing, reuse and failure retention",
+    "Existing launcher, checkpoint and storage regression tests"
   ],
-  "notes": [
-    "Historical validation records are under validation_history and do not apply to these new edits.",
-    "No model, dataset or CUDA/simulator execution performed in the current local validation.",
-    "Full-training resume recreates the RLDS stream; exact stream continuation is not implemented.",
-    "No remote GitHub push or cluster execution was performed."
+  "limitations": [
+    "No target CUDA execution, real optimiser resume, OpenVLA merge or simulator run performed here.",
+    "Smoke includes those real checks on the target node.",
+    "Batch-16 GPU memory fit and host peak memory remain unmeasured.",
+    "EGL requires an explicitly verified device index if OSMesa is unavailable.",
+    "RLDS resume is not exact data-stream continuation."
   ]
 }

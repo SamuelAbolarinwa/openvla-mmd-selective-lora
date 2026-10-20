@@ -52,7 +52,7 @@ def components(repo, run, cfg):
         ('processor and source metadata', cache, int(.25*GIB), None),
         ('LIBERO-Object RLDS', data, DATASET_BYTES, data/cfg['dataset_name']),
         ('two retained checkpoints plus atomic new saves', run, checkpoint_peak, None),
-        ('final adapters and smoke outputs', run, cfg['expected_trainable_params']*4*8, run/'smoke'),
+        ('final adapters and smoke outputs', run, cfg['expected_trainable_params']*4*16, run/'smoke'),
         ('two merged models', run, MODEL_BYTES*2, run/'merged'),
     ]
     return rows

@@ -46,7 +46,7 @@ def launch_pair(repo_dir, run_dir, phase, resume=False):
     if phase == 'smoke' and (run_dir/'SMOKE_COMPLETE.json').is_file():
         marker=json.loads((run_dir/'SMOKE_COMPLETE.json').read_text())
         previous=Path(marker['output_root'])
-        if marker['status']=='PASS' and all((previous/c/'completion.json').is_file() and
+        if marker.get('qualification_version') == 2 and marker['status']=='PASS' and all((previous/c/'completion.json').is_file() and
                 (previous/c/'final_adapter/adapter_model.safetensors').is_file() for c in ['uniform','mmd_selective']):
             print('Reusing completed smoke from this frozen run:', previous, flush=True)
             return
@@ -58,7 +58,9 @@ def launch_pair(repo_dir, run_dir, phase, resume=False):
         output_root = run_dir / 'smoke' / str(time.time_ns())
         max_steps = int(tc["smoke_steps"])
         shuffle = int(tc["smoke_shuffle_buffer_size"])
-        save_steps = max_steps
+        save_steps = 1
+        if max_steps < 2:
+            raise ValueError("Smoke requires at least two updates to test checkpoint resume")
     else:
         output_root = run_dir / "training"
         max_steps = int(tc["max_steps"])
@@ -99,56 +101,66 @@ def launch_pair(repo_dir, run_dir, phase, resume=False):
         ]
         if phase == "smoke":
             cmd.append("--smoke")
-        if resume:
+        if phase == "smoke" and not resume_probe:
+            cmd.extend(["--stop-after-step", "1"])
+        if resume or (phase == "smoke" and resume_probe):
             cmd.append("--resume")
         return cmd
 
-    processes = []
-    if parallel:
-        print("Using two independent single-GPU processes in parallel.", flush=True)
-        print("No DDP is used; Uniform and MMD remain independent experiments.", flush=True)
-        for condition, gpu in conditions:
-            env = os.environ.copy()
-            env["CUDA_VISIBLE_DEVICES"] = tokens[gpu]
-            log = run_dir / "logs" / f"{phase}_{condition}.log"
-            p, t = stream_process(condition, command(condition), env, log)
-            processes.append((condition, p, t))
-        try:
-            pending = list(processes)
-            while pending:
-                for condition, proc, thread in list(pending):
-                    rc = proc.poll()
-                    if rc is None: continue
-                    thread.join()
-                    pending.remove((condition,proc,thread))
-                    if rc != 0: raise RuntimeError(f'{phase} failed for {condition}, exit {rc}; stopping the other condition')
-                if pending: time.sleep(0.2)
-        finally:
-            for _, proc, thread in processes:
-                if proc.poll() is None:
-                    proc.terminate()
-                    try: proc.wait(timeout=30)
-                    except subprocess.TimeoutExpired:
-                        proc.kill(); proc.wait()
-                thread.join(timeout=5)
-    else:
-        print("Running conditions sequentially (GPU count, available RAM or VLA_SEQUENTIAL).", flush=True)
-        for condition, gpu in conditions:
-            env = os.environ.copy()
-            env["CUDA_VISIBLE_DEVICES"] = tokens[gpu]
-            log = run_dir / "logs" / f"{phase}_{condition}.log"
-            p, t = stream_process(condition, command(condition), env, log)
+    # Smoke step 1 commits in one process; remaining updates restore in another.
+    for resume_probe in ([False, True] if phase == "smoke" else [False]):
+        processes = []
+        if parallel:
+            print("Using two independent single-GPU processes in parallel.", flush=True)
+            print("No DDP is used; Uniform and MMD remain independent experiments.", flush=True)
+            for condition, gpu in conditions:
+                env = os.environ.copy()
+                env["CUDA_VISIBLE_DEVICES"] = tokens[gpu]
+                log = run_dir / "logs" / f"{phase}_{condition}.log"
+                p, t = stream_process(condition, command(condition), env, log)
+                processes.append((condition, p, t))
             try:
-                rc = p.wait()
+                pending = list(processes)
+                while pending:
+                    for condition, proc, thread in list(pending):
+                        rc = proc.poll()
+                        if rc is None: continue
+                        thread.join()
+                        pending.remove((condition,proc,thread))
+                        if rc != 0: raise RuntimeError(f'{phase} failed for {condition}, exit {rc}; stopping the other condition')
+                    if pending: time.sleep(0.2)
             finally:
-                if p.poll() is None:
-                    p.terminate()
-                    try: p.wait(timeout=30)
-                    except subprocess.TimeoutExpired:
-                        p.kill(); p.wait()
-                t.join(timeout=5)
-            if rc != 0:
-                raise RuntimeError(f"{phase} failed for {condition}, exit code {rc}")
+                for _, proc, thread in processes:
+                    if proc.poll() is None:
+                        proc.terminate()
+                        try: proc.wait(timeout=30)
+                        except subprocess.TimeoutExpired:
+                            proc.kill(); proc.wait()
+                    thread.join(timeout=5)
+        else:
+            print("Running conditions sequentially (GPU count, available RAM or VLA_SEQUENTIAL).", flush=True)
+            for condition, gpu in conditions:
+                env = os.environ.copy()
+                env["CUDA_VISIBLE_DEVICES"] = tokens[gpu]
+                log = run_dir / "logs" / f"{phase}_{condition}.log"
+                p, t = stream_process(condition, command(condition), env, log)
+                try:
+                    rc = p.wait()
+                finally:
+                    if p.poll() is None:
+                        p.terminate()
+                        try: p.wait(timeout=30)
+                        except subprocess.TimeoutExpired:
+                            p.kill(); p.wait()
+                    t.join(timeout=5)
+                if rc != 0:
+                    raise RuntimeError(f"{phase} failed for {condition}, exit code {rc}")
+
+    if phase == 'smoke':
+        for condition, _ in conditions:
+            record = json.loads((output_root / condition / 'completion.json').read_text())
+            if record.get('resumed_from_step') != 1 or record['optimizer_steps'] != max_steps:
+                raise RuntimeError('Smoke did not execute the required fresh-process training resume')
 
     audits = [json.loads((output_root / condition / 'completion.json').read_text())['audit'] for condition,_ in conditions]
     if audits[0]['non_llm_modules'] != audits[1]['non_llm_modules']:
@@ -185,7 +197,7 @@ def launch_pair(repo_dir, run_dir, phase, resume=False):
             )
 
     (run_dir / f'{phase.upper()}_COMPLETE.json').write_text(json.dumps({
-        'phase':phase, 'output_root':str(output_root), 'status':'PASS',
+        'phase':phase, 'output_root':str(output_root), 'status':'PASS', 'qualification_version':2,
     },indent=2)+'\n')
     print(f"{phase.upper()} PHASE: PASS", flush=True)
 

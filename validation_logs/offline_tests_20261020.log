@@ -1,0 +1,83 @@
+Python/Bash syntax: PASS
+test_checkpoint_commit_survives_failed_next_save (__main__.Contracts.test_checkpoint_commit_survives_failed_next_save) ... ok
+test_cuda_build_is_explicitly_installed (__main__.Contracts.test_cuda_build_is_explicitly_installed) ... ok
+test_evaluation_resume_rejects_changed_evaluator (__main__.Contracts.test_evaluation_resume_rejects_changed_evaluator) ... ok
+test_explicit_broken_python_has_actionable_error (__main__.Contracts.test_explicit_broken_python_has_actionable_error) ... ok
+test_force_sequential (__main__.Contracts.test_force_sequential) ... ok
+test_legacy_simulator_states_have_explicit_load_policy (__main__.Contracts.test_legacy_simulator_states_have_explicit_load_policy) ... ok
+test_log_bundle_excludes_weights (__main__.Contracts.test_log_bundle_excludes_weights) ... ok
+test_missing_gpu_keeps_preflight_log (__main__.Contracts.test_missing_gpu_keeps_preflight_log) ... ok
+test_numeric_gpu_allocation (__main__.Contracts.test_numeric_gpu_allocation) ... ok
+test_python_bootstrap_when_system_venv_is_broken (__main__.Contracts.test_python_bootstrap_when_system_venv_is_broken) ... ok
+test_run_provenance_rejects_changed_or_missing_records (__main__.Contracts.test_run_provenance_rejects_changed_or_missing_records) ... ok
+test_scientific_configuration (__main__.Contracts.test_scientific_configuration) ... ok
+test_single_gpu_sequential (__main__.Contracts.test_single_gpu_sequential) ... ok
+test_stop_other_condition_on_failure (__main__.Contracts.test_stop_other_condition_on_failure) ... ok
+test_uuid_gpu_allocation (__main__.Contracts.test_uuid_gpu_allocation) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 4.158s
+
+OK
+test_all_runtime_model_loaders_use_explicit_source_classes (__main__.ClusterFixes.test_all_runtime_model_loaders_use_explicit_source_classes) ... ok
+test_asset_overlay_fills_missing_processor_without_replacing_weights (__main__.ClusterFixes.test_asset_overlay_fills_missing_processor_without_replacing_weights) ... ok
+test_cgroup_limit_takes_priority_over_host_free_memory (__main__.ClusterFixes.test_cgroup_limit_takes_priority_over_host_free_memory) ... ok
+test_clean_108_decimal_gb_fits_budget_but_70_gib_fails (__main__.ClusterFixes.test_clean_108_decimal_gb_fits_budget_but_70_gib_fails) ... ok
+test_existing_files_credit_is_capped_and_margin_remains (__main__.ClusterFixes.test_existing_files_credit_is_capped_and_margin_remains) ... ok
+test_existing_operator_environment_is_not_used (__main__.ClusterFixes.test_existing_operator_environment_is_not_used) ... ok
+test_foreign_latest_pointer_refuses_pruning (__main__.ClusterFixes.test_foreign_latest_pointer_refuses_pruning) ... ok
+test_retention_keeps_latest_previous_and_incomplete_evidence (__main__.ClusterFixes.test_retention_keeps_latest_previous_and_incomplete_evidence) ... ok
+test_wrong_project_python_is_preserved_and_rebuilt (__main__.ClusterFixes.test_wrong_project_python_is_preserved_and_rebuilt) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 2.176s
+
+OK
+Downloading/pinning OpenVLA base snapshot...
+Downloading LIBERO-Object RLDS...
+{
+  "base_model_overlay": "/tmp/tmp944db60i/repo/base_model_overlay",
+  "base_snapshot": "/tmp/tmp944db60i/weights",
+  "dataset_root": "/tmp/tmp944db60i/repo/data/modified_libero_rlds",
+  "dataset_dir": "/tmp/tmp944db60i/repo/data/modified_libero_rlds/libero_object_no_noops",
+  "openvla_source": "/tmp/tmp944db60i/repo/third_party/openvla",
+  "libero_source": "/tmp/tmp944db60i/repo/third_party/LIBERO",
+  "libero_config_dir": "/tmp/tmp944db60i/repo/libero_config",
+  "model_revision": "cf0c8cbad1e427993a2e02da9c5182a91c33f869",
+  "dataset_revision": "6ce6aaaaabdbe590b1eef5cd29c0d33f14a08551",
+  "processor_revision": "47a0ec7fc4ec123775a391911046cf33cf9ed83f",
+  "dlimp_commit": "040105d256bd28866cc6620621a3d5f7b6b91b46",
+  "openvla_commit": "c8f03f48af692657d3060c19588038c7220e9af9",
+  "libero_commit": "8f1084e3132a39270c3a13ebe37270a43ece2a01"
+}
+ASSET PREPARATION: PASS
+test_failed_merged_inference_retains_evidence_without_pass_marker (__main__.SafetyChecks.test_failed_merged_inference_retains_evidence_without_pass_marker) ... ok
+test_merge_smoke_orders_reload_and_cleanup_and_reuses_marker (__main__.SafetyChecks.test_merge_smoke_orders_reload_and_cleanup_and_reuses_marker) ... CPU MERGE + FRESH MERGED-MODEL SIMULATOR CHECK: PASS
+Previously completed merged-model smoke reused
+ok
+test_namespaced_mount_root (__main__.SafetyChecks.test_namespaced_mount_root) ... ok
+test_nested_v1 (__main__.SafetyChecks.test_nested_v1) ... ok
+test_nested_v2_and_parent_budget (__main__.SafetyChecks.test_nested_v2_and_parent_budget) ... ok
+test_nonroot_mount (__main__.SafetyChecks.test_nonroot_mount) ... ok
+test_orchestrator_requires_a_real_resume_stage (__main__.SafetyChecks.test_orchestrator_requires_a_real_resume_stage) ... Available host RAM: 7.8 GiB; parallel-memory gate: False
+Running conditions sequentially (GPU count, available RAM or VLA_SEQUENTIAL).
+[uniform] $ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -u /tmp/tmpiwk_tu3j/repo/scripts/train_condition.py --condition uniform --config /tmp/tmpiwk_tu3j/run/config.json --assets /tmp/tmpiwk_tu3j/run/assets.json --output-root /tmp/tmpiwk_tu3j/run/smoke/1792501322730291635 --max-steps 3 --batch-size 16 --grad-accum 8 --shuffle-buffer 100000 --save-steps 1 --smoke --stop-after-step 1
+[mmd_selective] $ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -u /tmp/tmpiwk_tu3j/repo/scripts/train_condition.py --condition mmd_selective --config /tmp/tmpiwk_tu3j/run/config.json --assets /tmp/tmpiwk_tu3j/run/assets.json --output-root /tmp/tmpiwk_tu3j/run/smoke/1792501322730291635 --max-steps 3 --batch-size 16 --grad-accum 8 --shuffle-buffer 100000 --save-steps 1 --smoke --stop-after-step 1
+Running conditions sequentially (GPU count, available RAM or VLA_SEQUENTIAL).
+[uniform] $ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -u /tmp/tmpiwk_tu3j/repo/scripts/train_condition.py --condition uniform --config /tmp/tmpiwk_tu3j/run/config.json --assets /tmp/tmpiwk_tu3j/run/assets.json --output-root /tmp/tmpiwk_tu3j/run/smoke/1792501322730291635 --max-steps 3 --batch-size 16 --grad-accum 8 --shuffle-buffer 100000 --save-steps 1 --smoke --resume
+[mmd_selective] $ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -u /tmp/tmpiwk_tu3j/repo/scripts/train_condition.py --condition mmd_selective --config /tmp/tmpiwk_tu3j/run/config.json --assets /tmp/tmpiwk_tu3j/run/assets.json --output-root /tmp/tmpiwk_tu3j/run/smoke/1792501322730291635 --max-steps 3 --batch-size 16 --grad-accum 8 --shuffle-buffer 100000 --save-steps 1 --smoke --resume
+[uniform-reload] $ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -u /tmp/tmpiwk_tu3j/repo/scripts/verify_adapter.py --base unused --adapter /tmp/tmpiwk_tu3j/run/smoke/1792501322730291635/uniform/final_adapter --stats /tmp/tmpiwk_tu3j/run/smoke/1792501322730291635/uniform/dataset_statistics.json --condition uniform
+[uniform-reload] mock reload
+[mmd_selective-reload] $ /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -u /tmp/tmpiwk_tu3j/repo/scripts/verify_adapter.py --base unused --adapter /tmp/tmpiwk_tu3j/run/smoke/1792501322730291635/mmd_selective/final_adapter --stats /tmp/tmpiwk_tu3j/run/smoke/1792501322730291635/mmd_selective/dataset_statistics.json --condition mmd_selective
+[mmd_selective-reload] mock reload
+SMOKE PHASE: PASS
+ok
+test_statistics_lock_blocks_another_process_then_releases (__main__.SafetyChecks.test_statistics_lock_blocks_another_process_then_releases) ... Waiting for dataset statistics lock...
+ok
+test_unlimited_cgroup_uses_host_available (__main__.SafetyChecks.test_unlimited_cgroup_uses_host_available) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.225s
+
+OK
+OFFLINE PACKAGE VALIDATION: PASS (no real model, CUDA or simulator execution)

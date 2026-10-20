@@ -25,7 +25,7 @@ class ClusterFixes(unittest.TestCase):
             (path/'meminfo').write_text('MemAvailable: 104857600 kB\n')
             (path/'memory.max').write_text(str(32*GIB))
             (path/'memory.current').write_text(str(4*GIB))
-            self.assertEqual(available_memory_bytes(path/'meminfo',path),28*GIB)
+            self.assertEqual(available_memory_bytes(path/'meminfo',path,path/'no-proc',path/'no-mountinfo'),28*GIB)
 
     def test_clean_108_decimal_gb_fits_budget_but_70_gib_fails(self):
         with tempfile.TemporaryDirectory() as tmp:

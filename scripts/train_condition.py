@@ -211,6 +211,7 @@ def main():
     ap.add_argument("--save-steps", type=int)
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--smoke", action="store_true")
+    ap.add_argument("--stop-after-step", type=int, help="Qualification only: commit a checkpoint and exit before completion")
     args = ap.parse_args()
 
     cfg = json.loads(args.config.read_text())
@@ -223,6 +224,8 @@ def main():
     shuffle_buffer = args.shuffle_buffer or int(train_cfg["shuffle_buffer_size"])
     save_steps = args.save_steps or int(train_cfg["save_steps"])
     condition = args.condition
+    if args.stop_after_step is not None and (not args.smoke or not 0 < args.stop_after_step < max_steps):
+        raise ValueError("--stop-after-step requires smoke mode and a step below max_steps")
     seed = int(cfg["seed"])
 
     run_dir = args.output_root / condition
@@ -362,17 +365,19 @@ def main():
             image_transform=processor.image_processor.apply_transform,
             prompt_builder_fn=PurePromptBuilder,
         )
-        dataset = RLDSDataset(
-            Path(assets["dataset_root"]),
-            cfg["dataset_name"],
-            batch_transform,
-            resize_resolution=image_sizes,
-            shuffle_buffer_size=shuffle_buffer,
-            image_aug=bool(train_cfg["image_aug"]),
-        )
-
-        if not (run_dir / "dataset_statistics.json").exists():
-            save_dataset_statistics(dataset.dataset_statistics, run_dir)
+        from dataset_lock import dataset_statistics_lock
+        with dataset_statistics_lock(assets["dataset_root"]):
+            dataset = RLDSDataset(
+                Path(assets["dataset_root"]),
+                cfg["dataset_name"],
+                batch_transform,
+                resize_resolution=image_sizes,
+                shuffle_buffer_size=shuffle_buffer,
+                image_aug=bool(train_cfg["image_aug"]),
+            )
+    
+            if not (run_dir / "dataset_statistics.json").exists():
+                save_dataset_statistics(dataset.dataset_statistics, run_dir)
 
         collator = PaddedCollatorForActionPrediction(
             processor.tokenizer.model_max_length,
@@ -569,7 +574,7 @@ def main():
                     "audit": audit,
                 })
 
-            if optimizer_step % save_steps == 0 or optimizer_step == max_steps:
+            if optimizer_step % save_steps == 0 or optimizer_step == max_steps or optimizer_step == args.stop_after_step:
                 save_checkpoint(
                     model,
                     processor,
@@ -586,6 +591,11 @@ def main():
                         "grad_norm": float(grad_norm),
                     },
                 )
+
+            if optimizer_step == args.stop_after_step:
+                atomic_json(status_path, {"state": "PAUSED_FOR_RESUME_CHECK", "optimizer_step": optimizer_step})
+                print("Committed qualification checkpoint; next process must resume it", flush=True)
+                return
 
             if optimizer_step >= max_steps:
                 break
@@ -611,6 +621,7 @@ def main():
             "condition": condition,
             "optimizer_steps": optimizer_step,
             "micro_steps_this_process": micro_step,
+            "resumed_from_step": start_step,
             "final_adapter": str(final_adapter),
             "metrics_csv": str(metrics_path),
             "dataset_statistics": str(run_dir / "dataset_statistics.json"),

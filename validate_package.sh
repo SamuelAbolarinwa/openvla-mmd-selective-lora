@@ -13,4 +13,5 @@ print('Python/Bash syntax: PASS')
 PY
 "$PYTHON" "$REPO_DIR/tests/offline_validation.py"
 "$PYTHON" "$REPO_DIR/tests/cluster_validation.py"
+"$PYTHON" "$REPO_DIR/tests/cluster_safety_validation.py"
 echo 'OFFLINE PACKAGE VALIDATION: PASS (no real model, CUDA or simulator execution)'

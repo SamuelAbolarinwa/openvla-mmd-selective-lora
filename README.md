@@ -1,4 +1,4 @@
-# OpenVLA MMD-selective LoRA: cluster release, 19 October 2026
+# OpenVLA MMD-selective LoRA: cluster fixes, 20 October 2026
 
 Complete Bash package for the independent, equal-parameter comparison on LIBERO-Object.
 Start with the production-profile smoke test. Its results decide readiness and runtime.
@@ -58,9 +58,12 @@ bash run_smoke.sh
 ```
 
 This performs hardware/resource checks, pinned downloads, text/image processing,
-headless rendering, two **complete optimiser updates** per condition, atomic
-checkpoint saves, fresh-process adapter reload and action inference, followed
-by model-plus-simulator checks. It stops before long training. These checks test
+headless rendering, three **complete optimiser updates** per condition, atomic
+checkpoint saves, a process restart after update one, optimiser/RNG restoration
+and two further updates, fresh-process adapter reload and action inference,
+followed by model-plus-simulator checks. It also exercises the production CPU
+merge, saves and reloads the merged model, and tests it with the simulator.
+Temporary merged smoke models are removed after successful checks, one at a time. It stops before long training. These checks test
 execution, not policy quality. Initial downloads and installation take extra time.
 
 Collect the output to send back:
@@ -72,7 +75,7 @@ bash collect_logs.sh "$VLA_RUN_DIR"
 Send `diagnostics.tar.gz` from that directory. It includes per-condition
 `timing.json`, hardware/environment records, metrics and error logs, but no
 weights. The smoke timing excludes the first update for its estimate; one timed
-update per condition is preliminary and must not be treated as a long-run benchmark.
+update after restart per condition is preliminary and must not be treated as a long-run benchmark.
 
 ## Full run after the smoke passes
 
@@ -102,7 +105,7 @@ Do not change this package in place after an experiment has started.
 
 The former blanket 200 GiB gate is replaced with a per-filesystem additional-space
 budget in `logs/storage_budget.json`. For a fresh run with everything on one
-filesystem, the estimate is about **87.75 GiB (94.2 decimal GB)** including a
+filesystem, the estimate is about **91.05 GiB (97.8 decimal GB)** including a
 10 GiB safety margin. Thus 108 decimal GB of actual free space fits the estimate.
 It is not a measured end-to-end peak guarantee.
 
@@ -114,7 +117,7 @@ It is not a measured end-to-end peak guarantee.
 | Processing/source metadata | 0.25 GiB |
 | LIBERO-Object RLDS | 2.62 GiB |
 | Checkpoint saves, including atomic-save overlap | 7.43 GiB |
-| Final adapters and smoke outputs | 3.30 GiB |
+| Final adapters and smoke outputs | 6.61 GiB |
 | Both merged models | 28.09 GiB |
 | Safety margin | 10 GiB |
 
@@ -138,7 +141,7 @@ bash run_smoke.sh
 
 ## Resume and evaluation-only runs
 
-Checkpoints are saved every 5,000 successful optimiser updates. A forced stop can
+Checkpoints are saved every 500 successful optimiser updates. A forced stop can
 lose work after the last committed checkpoint. Keep the complete original run and
 source package. To resume full training:
 
@@ -158,8 +161,9 @@ bash run_evaluation.sh /absolute/path/to/existing/run
 
 ## Scientific configuration
 
-The training and evaluation settings from the previous cluster package are
-retained. Only a separate processing-asset revision was added to `config.json`:
+The scientific training and evaluation settings are retained. The checkpoint
+interval is now 500 updates and smoke qualification uses three updates.
+A separate processing-asset revision is included in `config.json`:
 the original model revision contains no tokenizer/processor files. Model weights
 remain pinned to `cf0c8cbad1e427993a2e02da9c5182a91c33f869`. Seven official processing
 files are pinned separately to `47a0ec7fc4ec123775a391911046cf33cf9ed83f`.
@@ -192,3 +196,36 @@ unquantised FP16 FSDP training and fresh-process restoration for that different
 trainer; it does not qualify the single-GPU BF16 cluster recipe. Blackwell/Ada
 execution, full batch memory fit, host-memory fit, renderer availability and the
 full experiment remain subject to the target-machine smoke and subsequent run.
+
+## Changes in the 20 October replacement package
+
+Use a fresh run directory after applying these source/configuration changes.
+Do not replace source files while a run is active. Existing frozen runs require
+their original source/configuration to resume; this update does not migrate them.
+
+Host-memory checks resolve the process cgroup from `/proc/self/cgroup` and its
+mount from `/proc/self/mountinfo`, including visible ancestor limits on cgroup v1
+and v2. A 64 GiB parallel threshold is still a heuristic, not a measured peak
+requirement. Dataset statistics initialisation is protected by an advisory file
+lock shared by both training conditions on the dataset filesystem.
+
+OSMesa is tried first. If it is unavailable, EGL requires an administrator-verified
+EGL device index, supplied as `VLA_EGL_DEVICE_ID`. This is the EGL enumeration
+index for an allocated GPU, which must not be assumed equal to a CUDA index.
+For example, after the administrator supplies the correct index:
+
+```bash
+export VLA_RENDERER=egl
+export VLA_EGL_DEVICE_ID=VERIFIED_INDEX
+```
+
+Replace `VERIFIED_INDEX` with that numeric index. The script does not install
+system renderer libraries. If neither backend works, diagnostics explain the
+failure and full training does not start.
+
+Full training remains 50,000 updates per condition, physical batch 16,
+accumulation 8, with the same adapters, optimiser and learning rate. Only the
+checkpoint interval (500) and smoke qualification (three updates) change.
+Smoke resume does not imply exact RLDS stream restoration; that limitation remains.
+The merge check validates execution and finite actions, not policy quality or
+numerical equivalence between merged and unmerged predictions.
